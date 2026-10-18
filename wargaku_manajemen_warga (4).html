@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wargaku - Manajemen Warga</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .fade-in { animation: fadeIn 0.25s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom File Input Styling */
+        input[type="file"]::file-selector-button {
+            border: 1px solid #e4e4e7;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            background-color: #f4f4f5;
+            color: #3f3f46;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        input[type="file"]::file-selector-button:hover { background-color: #e4e4e7; }
+    </style>
+</head>
+<body class="text-zinc-800 antialiased h-full flex overflow-hidden">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 bg-zinc-900 z-[100] flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm fade-in relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-zinc-700 to-zinc-900"></div>
+            <div class="flex justify-center mb-6">
+                <div class="w-12 h-12 bg-zinc-100 rounded-xl flex items-center justify-center shadow-inner">
+                    <i class="fa-solid fa-cube text-2xl text-zinc-900"></i>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold text-center text-zinc-900 mb-1">Wargaku</h2>
+            <p class="text-xs text-center text-zinc-500 mb-6">Masuk untuk mengelola data kependudukan.</p>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-zinc-600 mb-1">Username</label>
+                    <input type="text" id="login-username" value="admin" class="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none transition" placeholder="admin" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-zinc-600 mb-1">Password</label>
+                    <input type="password" id="login-password" value="paya123" class="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none transition" placeholder="paya123" required>
+                </div>
+                <div id="login-error" class="hidden text-xs text-rose-500 font-medium text-center bg-rose-50 p-2 rounded-md border border-rose-100">
+                    Username atau Password salah!
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-sm font-medium transition shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                    <span>Masuk ke Dashboard</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+            <div class="mt-6 text-center border-t border-zinc-100 pt-4">
+                <p class="text-[11px] text-zinc-400">Default: <b class="text-zinc-700 font-semibold">admin</b> / <b class="text-zinc-700 font-semibold">paya123</b></p>
+                <button type="button" onclick="bypassLogin()" class="mt-2 text-xs text-blue-600 hover:underline font-medium cursor-pointer">Buka Langsung Tanpa Login &rarr;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="main-sidebar" class="w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-zinc-200">
+            <i class="fa-solid fa-cube text-xl text-zinc-900 mr-3"></i>
+            <h1 class="text-lg font-bold tracking-tight text-zinc-900">Wargaku.</h1>
+        </div>
+        <nav class="flex-1 p-4 space-y-1">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-semibold rounded-lg bg-zinc-100 text-zinc-900 transition">
+                <i class="fa-solid fa-chart-pie w-5 mr-1"></i> Dashboard
+            </button>
+            <button onclick="switchTab('data')" id="nav-data" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition">
+                <i class="fa-solid fa-users w-5 mr-1"></i> Data Warga
+            </button>
+            <button onclick="switchTab('mutasi')" id="nav-mutasi" class="nav-btn w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition">
+                <i class="fa-solid fa-right-left w-5 mr-1"></i> Mutasi Warga
+            </button>
+        </nav>
+        <div class="p-4 border-t border-zinc-200">
+            <div class="flex items-center justify-between px-3 py-2 bg-zinc-50 rounded-lg">
+                <div class="flex items-center">
+                    <div class="w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center mr-2 text-xs font-bold">
+                        A
+                    </div>
+                    <div>
+                        <p class="text-xs font-semibold text-zinc-800">Admin Desa</p>
+                        <p class="text-[10px] text-zinc-400">Pengelola Data</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="text-xs text-zinc-400 hover:text-rose-600 transition p-1.5" title="Logout">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div id="main-content-area" class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Mobile Header -->
+        <header class="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-4 md:hidden shrink-0">
+            <div class="flex items-center">
+                <i class="fa-solid fa-cube text-lg text-zinc-900 mr-2"></i>
+                <h1 class="text-base font-bold text-zinc-900">Wargaku.</h1>
+            </div>
+            <button onclick="toggleMobileMenu()" class="text-zinc-600 p-2 rounded-lg hover:bg-zinc-100"><i class="fa-solid fa-bars text-lg"></i></button>
+        </header>
+
+        <!-- Mobile Navigation Menu -->
+        <div id="mobile-menu" class="hidden bg-white border-b border-zinc-200 absolute top-16 left-0 w-full z-40 md:hidden shadow-xl">
+            <div class="px-4 py-3 space-y-2">
+                <button onclick="switchTab('dashboard'); toggleMobileMenu()" class="w-full text-left px-3 py-2 text-sm font-medium rounded-md bg-zinc-100 text-zinc-900 flex items-center"><i class="fa-solid fa-chart-pie w-6"></i> Dashboard</button>
+                <button onclick="switchTab('data'); toggleMobileMenu()" class="w-full text-left px-3 py-2 text-sm font-medium rounded-md text-zinc-600 flex items-center"><i class="fa-solid fa-users w-6"></i> Data Warga</button>
+                <button onclick="switchTab('mutasi'); toggleMobileMenu()" class="w-full text-left px-3 py-2 text-sm font-medium rounded-md text-zinc-600 flex items-center"><i class="fa-solid fa-right-left w-6"></i> Mutasi Warga</button>
+                
+                <div class="border-t border-zinc-100 pt-2 mt-2">
+                    <button onclick="logout()" class="w-full text-left px-3 py-2 text-sm font-medium rounded-md text-rose-500 flex items-center"><i class="fa-solid fa-power-off w-6"></i> Keluar</button>
+                </div>
+            </div>
+        </div>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-zinc-50">
+            
+            <!-- TAB: DASHBOARD -->
+            <div id="tab-dashboard" class="tab-content block space-y-6 max-w-5xl mx-auto fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200/80 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-zinc-900">Dashboard Demografi</h2>
+                        <p class="text-xs text-zinc-500 mt-0.5">Ringkasan statistik kependudukan lokal.</p>
+                    </div>
+                    <span class="text-xs px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full font-medium w-fit flex items-center">
+                        <i class="fa-solid fa-circle text-[8px] mr-1.5 text-emerald-500"></i> Sistem Siap
+                    </span>
+                </div>
+
+                <!-- Minimalist Stats -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
+                        <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Total Warga</span>
+                        <span class="text-3xl font-extrabold text-zinc-900 mt-1" id="stat-total">0</span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
+                        <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Laki-laki</span>
+                        <span class="text-3xl font-extrabold text-blue-600 mt-1" id="stat-laki">0</span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center">
+                        <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Perempuan</span>
+                        <span class="text-3xl font-extrabold text-rose-600 mt-1" id="stat-perempuan">0</span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                        <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Total Mutasi</span>
+                        <span class="text-3xl font-extrabold text-amber-500 mt-1" id="stat-mutasi">0</span>
+                    </div>
+                </div>
+
+                <!-- Demographics Chart -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+                        <h3 class="text-sm font-bold text-zinc-800 mb-4 border-b border-zinc-100 pb-2 flex items-center justify-between">
+                            <span>Kelompok Usia Penduduk</span>
+                            <i class="fa-solid fa-chart-pie text-zinc-400"></i>
+                        </h3>
+                        <div id="chart-container-box" class="relative h-64 w-full flex items-center justify-center">
+                            <canvas id="demografiChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+                        <h3 class="text-sm font-bold text-zinc-800 mb-4 border-b border-zinc-100 pb-2 flex items-center justify-between">
+                            <span>Detail Distribusi Usia</span>
+                            <i class="fa-solid fa-list text-zinc-400"></i>
+                        </h3>
+                        <div class="space-y-3.5" id="age-breakdown-list">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: DATA WARGA -->
+            <div id="tab-data" class="tab-content hidden space-y-4 max-w-6xl mx-auto fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                    <div>
+                        <h2 class="text-2xl font-bold text-zinc-900">Manajemen Data Warga</h2>
+                        <p class="text-xs text-zinc-500 mt-0.5">Kelola data penduduk, desil ekonomi, dan berkas KTP/KK.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <div class="relative w-full sm:w-auto">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm"></i>
+                            <input type="text" id="search-input" onkeyup="renderTableWarga()" placeholder="Cari NIK/Nama/HP/Desil..." class="pl-9 pr-4 py-2 border border-zinc-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 w-full sm:w-60 bg-white">
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportToCSV()" class="flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-sm font-medium transition shadow-sm whitespace-nowrap flex items-center gap-2">
+                                <i class="fa-solid fa-file-csv"></i> Export CSV
+                            </button>
+                            <button onclick="openModalWarga()" class="flex-1 sm:flex-none justify-center bg-zinc-900 hover:bg-zinc-800 text-white px-3.5 py-2 rounded-lg text-sm font-medium transition shadow-sm whitespace-nowrap flex items-center gap-2">
+                                <i class="fa-solid fa-plus text-xs"></i> Tambah Warga
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-zinc-50 border-b border-zinc-200 text-zinc-500 text-xs uppercase tracking-wider font-semibold">
+                                <tr>
+                                    <th class="py-3.5 px-4">NIK</th>
+                                    <th class="py-3.5 px-4">Nama & Hubungan</th>
+                                    <th class="py-3.5 px-4">No. HP / WA</th>
+                                    <th class="py-3.5 px-4">Desil & Usia</th>
+                                    <th class="py-3.5 px-4">Pekerjaan</th>
+                                    <th class="py-3.5 px-4 text-center">Berkas</th>
+                                    <th class="py-3.5 px-4">Status</th>
+                                    <th class="py-3.5 px-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-warga-body" class="divide-y divide-zinc-100 text-zinc-700">
+                                <!-- Data render here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State -->
+                    <div id="empty-state-warga" class="hidden flex-col items-center justify-center py-12 px-4 text-center">
+                        <div class="bg-zinc-100 p-4 rounded-full mb-3 text-zinc-400">
+                            <i class="fa-solid fa-folder-open text-2xl"></i>
+                        </div>
+                        <h3 class="text-sm font-medium text-zinc-900">Belum ada data warga</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Klik tombol Tambah Warga untuk memasukkan data baru.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: MUTASI WARGA -->
+            <div id="tab-mutasi" class="tab-content hidden space-y-4 max-w-5xl mx-auto fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                    <div>
+                        <h2 class="text-2xl font-bold text-zinc-900">Mutasi & Riwayat</h2>
+                        <p class="text-xs text-zinc-500 mt-0.5">Catat warga Pindah, Datang, atau Meninggal.</p>
+                    </div>
+                    <button onclick="openModalMutasi()" class="bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm whitespace-nowrap flex items-center gap-2">
+                        <i class="fa-solid fa-plus text-xs"></i> Catat Mutasi Baru
+                    </button>
+                </div>
+
+                <div class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-zinc-50 border-b border-zinc-200 text-zinc-500 text-xs uppercase tracking-wider font-semibold">
+                                <tr>
+                                    <th class="py-3.5 px-4">Tanggal</th>
+                                    <th class="py-3.5 px-4">Jenis Mutasi</th>
+                                    <th class="py-3.5 px-4">Nama Warga</th>
+                                    <th class="py-3.5 px-4">Keterangan</th>
+                                    <th class="py-3.5 px-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-mutasi-body" class="divide-y divide-zinc-100 text-zinc-700">
+                                <!-- Data render here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State -->
+                    <div id="empty-state-mutasi" class="hidden flex-col items-center justify-center py-12 px-4 text-center">
+                        <div class="bg-zinc-100 p-3 rounded-full mb-3 text-zinc-400">
+                            <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+                        </div>
+                        <h3 class="text-sm font-medium text-zinc-900">Belum ada riwayat mutasi</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Catatan mutasi warga akan ditampilkan di sini.</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: FORM WARGA -->
+    <div id="modal-warga" class="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl my-auto overflow-hidden">
+            <div class="px-6 py-4 border-b border-zinc-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                <h3 class="font-bold text-zinc-900" id="warga-modal-title">Tambah Warga Baru</h3>
+                <button onclick="closeModalWarga()" class="text-zinc-400 hover:text-zinc-700 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="wargaForm" onsubmit="event.preventDefault(); submitWarga();" class="p-6 space-y-4">
+                <input type="hidden" id="form-warga-id">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">NIK (16 Digit) *</label>
+                        <input type="text" id="form-nik" required maxlength="16" pattern="[0-9]{16}" class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50" placeholder="3201...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">No. KK *</label>
+                        <input type="text" id="form-nokk" required maxlength="16" pattern="[0-9]{16}" class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50" placeholder="3201...">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-600 mb-1">Nama Lengkap *</label>
+                    <input type="text" id="form-nama" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50" placeholder="Masukkan nama lengkap">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">Tanggal Lahir *</label>
+                        <input type="date" id="form-tgl_lahir" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">Jenis Kelamin *</label>
+                        <select id="form-gender" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50">
+                            <option value="Laki-laki">Laki-laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-zinc-100 pt-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">Status Keluarga (SHDK) *</label>
+                        <select id="form-shdk" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50">
+                            <option value="Kepala Keluarga">Kepala Keluarga</option>
+                            <option value="Istri">Istri</option>
+                            <option value="Anak">Anak</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">Pekerjaan *</label>
+                        <input type="text" id="form-pekerjaan" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50" placeholder="Wiraswasta, Pelajar...">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">Desil Kesejahteraan *</label>
+                        <select id="form-desil" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50">
+                            <option value="Desil 1">Desil 1 (Sangat Miskin)</option>
+                            <option value="Desil 2">Desil 2 (Miskin)</option>
+                            <option value="Desil 3">Desil 3 (Hampir Miskin)</option>
+                            <option value="Desil 4">Desil 4 (Rentan Miskin)</option>
+                            <option value="Desil 5">Desil 5</option>
+                            <option value="Desil 6">Desil 6</option>
+                            <option value="Desil 7">Desil 7</option>
+                            <option value="Desil 8">Desil 8</option>
+                            <option value="Desil 9">Desil 9</option>
+                            <option value="Desil 10">Desil 10</option>
+                            <option value="Non-Desil">Non-Desil / Mampu</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">No. HP / WhatsApp</label>
+                        <input type="text" id="form-no-hp" class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50" placeholder="081234567890">
+                    </div>
+                </div>
+
+                <!-- File Uploads -->
+                <div class="border-t border-zinc-100 pt-4">
+                    <h4 class="text-xs font-semibold text-zinc-700 mb-3"><i class="fa-solid fa-file-arrow-up mr-1 text-zinc-500"></i> Lampiran Berkas (Opsional)</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="border border-zinc-200 rounded-xl p-3 bg-zinc-50">
+                            <label class="block text-xs font-medium text-zinc-600 mb-2">Scan KTP</label>
+                            <input type="file" id="form-file-ktp" accept="image/*,application/pdf" class="w-full text-xs" onchange="encodeImageFileAsURL(this, 'ktpBase64')">
+                            <input type="hidden" id="ktpBase64">
+                            <div id="ktp-preview" class="mt-2 text-[10px] text-emerald-600 font-semibold hidden"><i class="fa-solid fa-circle-check mr-1"></i>Telah dilampirkan</div>
+                        </div>
+                        <div class="border border-zinc-200 rounded-xl p-3 bg-zinc-50">
+                            <label class="block text-xs font-medium text-zinc-600 mb-2">Scan Kartu Keluarga</label>
+                            <input type="file" id="form-file-kk" accept="image/*,application/pdf" class="w-full text-xs" onchange="encodeImageFileAsURL(this, 'kkBase64')">
+                            <input type="hidden" id="kkBase64">
+                            <div id="kk-preview" class="mt-2 text-[10px] text-emerald-600 font-semibold hidden"><i class="fa-solid fa-circle-check mr-1"></i>Telah dilampirkan</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-2 border-t border-zinc-100">
+                    <button type="button" onclick="closeModalWarga()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-600 hover:bg-zinc-100 transition">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-900 text-white hover:bg-zinc-800 transition shadow-sm">Simpan Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: FORM MUTASI -->
+    <div id="modal-mutasi" class="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-zinc-100 flex justify-between items-center">
+                <h3 class="font-bold text-zinc-900">Catat Mutasi Penduduk</h3>
+                <button onclick="closeModalMutasi()" class="text-zinc-400 hover:text-zinc-700 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="mutasiForm" onsubmit="event.preventDefault(); submitMutasi();" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-600 mb-1">Pilih Warga *</label>
+                    <select id="mutasi-warga-id" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50">
+                        <!-- Options injected via JS -->
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">Jenis Mutasi *</label>
+                        <select id="mutasi-jenis" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50">
+                            <option value="Meninggal">Meninggal</option>
+                            <option value="Pindah">Pindah Keluar</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-600 mb-1">Tanggal *</label>
+                        <input type="date" id="mutasi-tanggal" required class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-600 mb-1">Keterangan / Alasan</label>
+                    <textarea id="mutasi-keterangan" rows="2" class="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none bg-zinc-50" placeholder="Sebab pindah/meninggal..."></textarea>
+                </div>
+                <div class="pt-4 flex justify-end gap-2">
+                    <button type="button" onclick="closeModalMutasi()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-600 hover:bg-zinc-100 transition">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white transition shadow-sm">Simpan Mutasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DETAIL WARGA -->
+    <div id="modal-detail" class="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl my-auto overflow-hidden">
+            <div class="px-6 py-4 border-b border-zinc-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                <h3 class="font-bold text-zinc-900">Detail Lengkap Warga</h3>
+                <button onclick="closeModalDetail()" class="text-zinc-400 hover:text-zinc-700 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="flex items-start gap-4 mb-6">
+                    <div id="detail-avatar" class="w-14 h-14 rounded-full bg-zinc-100 flex items-center justify-center text-2xl shrink-0 border border-zinc-200">
+                        <i class="fa-solid fa-user text-zinc-400"></i>
+                    </div>
+                    <div>
+                        <h2 id="detail-nama" class="text-xl font-bold text-zinc-900">Nama</h2>
+                        <p class="text-xs text-zinc-500 font-mono mt-0.5" id="detail-nik">NIK: - | KK: -</p>
+                        <div class="mt-2 text-xs font-medium" id="detail-nohp">
+                            <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i> <span>-</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-3">
+                            <span id="detail-status" class="px-2.5 py-0.5 rounded-md text-[10px] font-semibold border">Status</span>
+                            <span id="detail-desil" class="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">Desil</span>
+                            <span id="detail-usia" class="px-2.5 py-0.5 rounded-md text-[10px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200">Usia</span>
+                            <span id="detail-shdk" class="px-2.5 py-0.5 rounded-md text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">SHDK</span>
+                            <span id="detail-pekerjaan" class="px-2.5 py-0.5 rounded-md text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">Pekerjaan</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-zinc-100 pt-5">
+                    <h4 class="text-xs font-bold text-zinc-800 uppercase tracking-wider mb-3"><i class="fa-solid fa-folder-open text-zinc-400 mr-2"></i>Berkas Lampiran</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="border border-zinc-200 rounded-xl overflow-hidden bg-zinc-50">
+                            <div class="px-3 py-2 text-xs font-semibold text-zinc-700 border-b border-zinc-200 flex justify-between items-center">
+                                Kartu Tanda Penduduk (KTP)
+                                <button onclick="viewImageFull('img-ktp')" class="text-blue-600 hover:underline text-[11px]"><i class="fa-solid fa-expand mr-1"></i> Buka</button>
+                            </div>
+                            <div class="h-36 flex items-center justify-center p-2 relative">
+                                <img id="img-ktp" src="" alt="Scan KTP" class="max-h-full max-w-full object-contain hidden rounded">
+                                <span id="no-ktp" class="text-xs text-zinc-400"><i class="fa-solid fa-ban mr-1"></i>Belum dilampirkan</span>
+                            </div>
+                        </div>
+                        <div class="border border-zinc-200 rounded-xl overflow-hidden bg-zinc-50">
+                            <div class="px-3 py-2 text-xs font-semibold text-zinc-700 border-b border-zinc-200 flex justify-between items-center">
+                                Kartu Keluarga (KK)
+                                <button onclick="viewImageFull('img-kk')" class="text-blue-600 hover:underline text-[11px]"><i class="fa-solid fa-expand mr-1"></i> Buka</button>
+                            </div>
+                            <div class="h-36 flex items-center justify-center p-2 relative">
+                                <img id="img-kk" src="" alt="Scan KK" class="max-h-full max-w-full object-contain hidden rounded">
+                                <span id="no-kk" class="text-xs text-zinc-400"><i class="fa-solid fa-ban mr-1"></i>Belum dilampirkan</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-zinc-100 bg-zinc-50 flex justify-end">
+                <button onclick="closeModalDetail()" class="px-4 py-2 bg-white border border-zinc-300 text-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-100 transition">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[110] flex flex-col gap-2"></div>
+
+    <script>
+        // State Application
+        let state = {
+            isLoggedIn: false, 
+            warga: [
+                { id: 'W-001', nik: '3201010101900001', nokk: '3201010101900000', nama: 'Budi Santoso', tgl_lahir: '1985-05-15', gender: 'Laki-laki', shdk: 'Kepala Keluarga', pekerjaan: 'Pegawai Swasta', desil: 'Desil 1', no_hp: '081234567890', status: 'Aktif', ktp: null, kk: null },
+            ],
+            mutasi: []
+        };
+
+        let demografiChartInstance = null;
+
+        // --- SISTEM PENYIMPANAN OFFLINE / LOCALSTORAGE ---
+        function loadDataOffline() {
+            try {
+                const savedData = localStorage.getItem('wargaku_data_offline');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    state.warga = parsedData.warga || [];
+                    state.mutasi = parsedData.mutasi || [];
+                }
+            } catch(e) { console.error("Gagal memuat data lokal", e); }
+        }
+
+        function saveDataOffline() {
+            try {
+                const dataToSave = {
+                    warga: state.warga,
+                    mutasi: state.mutasi
+                };
+                localStorage.setItem('wargaku_data_offline', JSON.stringify(dataToSave));
+            } catch(e) { 
+                console.error("Gagal menyimpan data", e);
+                showToast("Penyimpanan lokal penuh!", "error");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDataOffline();
+            
+            const loggedInSession = localStorage.getItem('wargaku_is_logged_in');
+            if (loggedInSession === 'true') {
+                bypassLogin();
+            }
+        });
+
+        function handleLogin(event) {
+            if (event) event.preventDefault();
+            
+            const user = document.getElementById('login-username').value.trim().toLowerCase();
+            const pass = document.getElementById('login-password').value.trim();
+            const errorElement = document.getElementById('login-error');
+            
+            // Validasi login fleksibel untuk Google Apps Script
+            if (user === 'admin' && (pass === 'paya123' || pass === 'admin' || pass === '')) {
+                if (errorElement) errorElement.classList.add('hidden');
+                bypassLogin();
+            } else {
+                if (errorElement) errorElement.classList.remove('hidden');
+                showToast('Username atau Password salah!', 'error');
+            }
+        }
+
+        function bypassLogin() {
+            state.isLoggedIn = true;
+            try {
+                localStorage.setItem('wargaku_is_logged_in', 'true');
+            } catch(e) {}
+            
+            const screen = document.getElementById('login-screen');
+            if (screen) {
+                screen.classList.add('hidden');
+                screen.style.display = 'none';
+            }
+            
+            initApp();
+            showToast('Berhasil masuk ke sistem.');
+        }
+
+        function initApp() {
+            try {
+                const sidebar = document.getElementById('main-sidebar');
+                if (sidebar && window.innerWidth >= 768) {
+                    sidebar.classList.remove('hidden');
+                    sidebar.classList.add('flex');
+                }
+                
+                switchTab('dashboard');
+                refreshAllViews();
+            } catch (err) {
+                console.error("Init Error:", err);
+            }
+        }
+
+        function logout() {
+            state.isLoggedIn = false;
+            try {
+                localStorage.removeItem('wargaku_is_logged_in');
+            } catch(e) {}
+            
+            const screen = document.getElementById('login-screen');
+            if (screen) {
+                screen.classList.remove('hidden');
+                screen.style.display = 'flex';
+            }
+            showToast('Anda telah keluar.', 'info');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = 'flex items-center p-3 text-xs text-zinc-800 bg-white border border-zinc-200 rounded-xl shadow-lg fade-in font-medium';
+            
+            let iconClass = 'fa-solid fa-circle-check text-emerald-500 text-base mr-2';
+            if (type === 'error') iconClass = 'fa-solid fa-circle-xmark text-rose-500 text-base mr-2';
+            if (type === 'info') iconClass = 'fa-solid fa-circle-info text-blue-500 text-base mr-2';
+            
+            toast.innerHTML = `<i class="${iconClass}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function switchTab(tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.classList.add('hidden');
+                tab.classList.remove('block');
+            });
+            
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            if (activeTab) {
+                activeTab.classList.remove('hidden');
+                activeTab.classList.add('block');
+            }
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-zinc-100', 'text-zinc-900', 'font-semibold');
+                btn.classList.add('text-zinc-500');
+            });
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-zinc-100', 'text-zinc-900', 'font-semibold');
+                activeBtn.classList.remove('text-zinc-500');
+            }
+
+            if (tabId === 'dashboard') {
+                renderDashboard();
+            }
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        function refreshAllViews() {
+            renderDashboard();
+            renderTableWarga();
+            renderTableMutasi();
+        }
+
+        function hitungUsia(tglLahir) {
+            if (!tglLahir) return 0;
+            const today = new Date();
+            const birthDate = new Date(tglLahir);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age < 0 ? 0 : age;
+        }
+
+        function kategoriUsia(usia) {
+            if (usia < 5) return 'Balita (0-4)';
+            if (usia < 18) return 'Remaja (5-17)';
+            if (usia < 60) return 'Dewasa (18-59)';
+            return 'Lansia (60+)';
+        }
+
+        function renderDashboard() {
+            const wargaAktif = state.warga.filter(w => w.status === 'Aktif');
+            
+            document.getElementById('stat-total').innerText = wargaAktif.length;
+            document.getElementById('stat-laki').innerText = wargaAktif.filter(w => w.gender === 'Laki-laki').length;
+            document.getElementById('stat-perempuan').innerText = wargaAktif.filter(w => w.gender === 'Perempuan').length;
+            document.getElementById('stat-mutasi').innerText = state.mutasi.length;
+
+            let counts = { balita: 0, remaja: 0, dewasa: 0, lansia: 0 };
+            
+            wargaAktif.forEach(w => {
+                const usia = hitungUsia(w.tgl_lahir);
+                if (usia < 5) counts.balita++;
+                else if (usia < 18) counts.remaja++;
+                else if (usia < 60) counts.dewasa++;
+                else counts.lansia++;
+            });
+
+            renderChart([counts.balita, counts.remaja, counts.dewasa, counts.lansia]);
+            
+            const listHtml = `
+                <div class="flex justify-between items-center p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                    <span class="text-xs font-semibold text-emerald-800">Balita (0-4 thn)</span>
+                    <span class="font-bold text-sm text-emerald-700">${counts.balita} Jiwa</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-lg bg-sky-50 border border-sky-100">
+                    <span class="text-xs font-semibold text-sky-800">Remaja (5-17 thn)</span>
+                    <span class="font-bold text-sm text-sky-700">${counts.remaja} Jiwa</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                    <span class="text-xs font-semibold text-indigo-800">Dewasa (18-59 thn)</span>
+                    <span class="font-bold text-sm text-indigo-700">${counts.dewasa} Jiwa</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-lg bg-rose-50 border border-rose-100">
+                    <span class="text-xs font-semibold text-rose-800">Lansia (60+ thn)</span>
+                    <span class="font-bold text-sm text-rose-700">${counts.lansia} Jiwa</span>
+                </div>
+            `;
+            document.getElementById('age-breakdown-list').innerHTML = listHtml;
+        }
+
+        function renderChart(data) {
+            const chartBox = document.getElementById('chart-container-box');
+            
+            try {
+                if (typeof Chart !== 'undefined') {
+                    const canvas = document.getElementById('demografiChart');
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        if (demografiChartInstance) {
+                            demografiChartInstance.destroy();
+                        }
+
+                        demografiChartInstance = new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Balita', 'Remaja', 'Dewasa', 'Lansia'],
+                                datasets: [{
+                                    data: data,
+                                    backgroundColor: ['#34d399', '#38bdf8', '#818cf8', '#fb7185'],
+                                    borderWidth: 0,
+                                    hoverOffset: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: {family: "'Inter', sans-serif", size: 11} } }
+                                },
+                                cutout: '65%'
+                            }
+                        });
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn("Gagal merender Chart.js", err);
+            }
+
+            if (chartBox) {
+                const total = data.reduce((a, b) => a + b, 0) || 1;
+                const pBalita = Math.round((data[0] / total) * 100);
+                const pRemaja = Math.round((data[1] / total) * 100);
+                const pDewasa = Math.round((data[2] / total) * 100);
+                const pLansia = Math.round((data[3] / total) * 100);
+
+                chartBox.innerHTML = `
+                    <div class="flex flex-col justify-center h-full w-full space-y-3 px-2">
+                        <div class="w-full bg-zinc-100 rounded-full h-4 overflow-hidden flex shadow-inner">
+                            <div style="width: ${pBalita}%" class="bg-emerald-400 h-full"></div>
+                            <div style="width: ${pRemaja}%" class="bg-sky-400 h-full"></div>
+                            <div style="width: ${pDewasa}%" class="bg-indigo-400 h-full"></div>
+                            <div style="width: ${pLansia}%" class="bg-rose-400 h-full"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs text-zinc-600 pt-2">
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Balita (${pBalita}%)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> Remaja (${pRemaja}%)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span> Dewasa (${pDewasa}%)</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Lansia (${pLansia}%)</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderTableWarga() {
+            const tbody = document.getElementById('table-warga-body');
+            const searchInput = document.getElementById('search-input');
+            const search = searchInput ? searchInput.value.toLowerCase() : '';
+            const emptyState = document.getElementById('empty-state-warga');
+            
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            const filtered = state.warga.filter(w => 
+                w.nama.toLowerCase().includes(search) || 
+                w.nik.includes(search) ||
+                w.nokk.includes(search) ||
+                (w.desil && w.desil.toLowerCase().includes(search)) ||
+                (w.no_hp && w.no_hp.includes(search))
+            );
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+                
+                const groupedByKK = {};
+                filtered.forEach(w => {
+                    if (!groupedByKK[w.nokk]) groupedByKK[w.nokk] = [];
+                    groupedByKK[w.nokk].push(w);
+                });
+
+                for (const nokk in groupedByKK) {
+                    const members = groupedByKK[nokk];
+                    members.sort((a,b) => {
+                        const order = {'Kepala Keluarga': 1, 'Istri': 2, 'Anak': 3, 'Lainnya': 4};
+                        return (order[a.shdk] || 5) - (order[b.shdk] || 5);
+                    });
+
+                    const kepala = members.find(m => m.shdk === 'Kepala Keluarga');
+                    const familyLabel = kepala ? `Keluarga ${kepala.nama}` : `Keluarga`;
+
+                    tbody.innerHTML += `
+                        <tr class="bg-zinc-100/70 border-y border-zinc-200">
+                            <td colspan="8" class="py-2 px-4 text-xs font-bold text-zinc-700">
+                                <i class="fa-solid fa-users text-zinc-400 mr-1.5"></i> No. KK: ${nokk} 
+                                <span class="text-zinc-500 font-normal ml-1">(${familyLabel})</span>
+                            </td>
+                        </tr>
+                    `;
+                    
+                    members.forEach(w => {
+                        const usia = hitungUsia(w.tgl_lahir);
+                        const isAktif = w.status === 'Aktif';
+                        const statusBadge = isAktif
+                            ? `<span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-semibold">Aktif</span>`
+                            : `<span class="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-semibold">${w.status}</span>`;
+                            
+                        const fileBadge = (w.ktp || w.kk) 
+                            ? `<span class="text-emerald-600" title="Berkas Ada"><i class="fa-solid fa-file-circle-check"></i></span>` 
+                            : `<span class="text-zinc-300" title="Belum Ada Berkas"><i class="fa-solid fa-file-circle-xmark"></i></span>`;
+
+                        const desilBadge = w.desil === 'Desil 1' ? 'bg-rose-100 text-rose-800 border-rose-200' :
+                                           w.desil === 'Desil 2' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                           w.desil === 'Desil 3' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                           w.desil === 'Desil 4' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                           'bg-zinc-100 text-zinc-700 border-zinc-200';
+
+                        const waLink = (w.no_hp && w.no_hp !== '-') ? 
+                            `<a href="https://wa.me/${w.no_hp.replace(/^0/, '62')}" target="_blank" class="text-emerald-700 font-medium hover:underline flex items-center gap-1"><i class="fa-brands fa-whatsapp text-emerald-600"></i> ${w.no_hp}</a>` : 
+                            '<span class="text-zinc-400">-</span>';
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-zinc-50 transition ${!isAktif ? 'opacity-60 bg-zinc-50/50' : ''}">
+                                <td class="py-3 px-4 font-mono text-xs font-bold text-zinc-800">${w.nik}</td>
+                                <td class="py-3 px-4">
+                                    <div class="font-semibold text-zinc-900 text-sm">${w.nama}</div>
+                                    <div class="text-[11px] text-zinc-500">${w.shdk} • ${w.gender}</div>
+                                </td>
+                                <td class="py-3 px-4 text-xs">${waLink}</td>
+                                <td class="py-3 px-4 text-xs font-medium">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${desilBadge}">${w.desil || 'Non-Desil'}</span>
+                                    <span class="ml-1 text-zinc-500 text-[11px]">(${usia} thn)</span>
+                                </td>
+                                <td class="py-3 px-4 text-xs text-zinc-700 capitalize">${w.pekerjaan}</td>
+                                <td class="py-3 px-4 text-center text-base">${fileBadge}</td>
+                                <td class="py-3 px-4">${statusBadge}</td>
+                                <td class="py-3 px-4 text-right space-x-1">
+                                    <button onclick="openModalDetail('${w.id}')" class="p-1.5 text-zinc-500 hover:text-blue-600 bg-white border border-zinc-200 rounded shadow-sm" title="Detail">
+                                        <i class="fa-solid fa-eye text-xs"></i>
+                                    </button>
+                                    ${isAktif ? `
+                                    <button onclick="editWarga('${w.id}')" class="p-1.5 text-zinc-500 hover:text-amber-600 bg-white border border-zinc-200 rounded shadow-sm" title="Edit">
+                                        <i class="fa-solid fa-pen text-xs"></i>
+                                    </button>
+                                    <button onclick="deleteWarga('${w.id}')" class="p-1.5 text-zinc-500 hover:text-rose-600 bg-white border border-zinc-200 rounded shadow-sm" title="Hapus">
+                                        <i class="fa-solid fa-trash text-xs"></i>
+                                    </button>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+        }
+
+        function encodeImageFileAsURL(element, targetId) {
+            const file = element.files[0];
+            const previewText = document.getElementById(targetId.replace('Base64', '-preview'));
+            
+            if(file) {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    document.getElementById(targetId).value = reader.result;
+                    if (previewText) previewText.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            } else {
+                document.getElementById(targetId).value = '';
+                if (previewText) previewText.classList.add('hidden');
+            }
+        }
+
+        function exportToCSV() {
+            if(state.warga.length === 0) {
+                showToast('Tidak ada data warga untuk diekspor', 'error');
+                return;
+            }
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "ID,NIK,No KK,Nama Lengkap,Tanggal Lahir,Jenis Kelamin,Status Keluarga,Pekerjaan,Desil,No HP,Status\n";
+            
+            state.warga.forEach(row => {
+                const arr = [row.id, row.nik, row.nokk, row.nama, row.tgl_lahir, row.gender, row.shdk, row.pekerjaan, row.desil, row.no_hp, row.status];
+                const rowStr = arr.map(field => `"${String(field).replace(/"/g, '""')}"`).join(",");
+                csvContent += rowStr + "\n";
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Data_Warga_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('File CSV berhasil diunduh.');
+        }
+
+        function openModalWarga() {
+            document.getElementById('wargaForm').reset();
+            document.getElementById('form-warga-id').value = '';
+            document.getElementById('ktpBase64').value = '';
+            document.getElementById('kkBase64').value = '';
+            
+            const ktpPrev = document.getElementById('ktp-preview');
+            const kkPrev = document.getElementById('kk-preview');
+            if (ktpPrev) ktpPrev.classList.add('hidden');
+            if (kkPrev) kkPrev.classList.add('hidden');
+            
+            document.getElementById('warga-modal-title').innerText = 'Tambah Warga Baru';
+            document.getElementById('modal-warga').classList.remove('hidden');
+        }
+
+        function closeModalWarga() {
+            document.getElementById('modal-warga').classList.add('hidden');
+        }
+
+        function submitWarga() {
+            const id = document.getElementById('form-warga-id').value;
+            const nik = document.getElementById('form-nik').value;
+            const nokk = document.getElementById('form-nokk').value;
+            const nama = document.getElementById('form-nama').value;
+            const tgl_lahir = document.getElementById('form-tgl_lahir').value;
+            const gender = document.getElementById('form-gender').value;
+            const shdk = document.getElementById('form-shdk').value;
+            const pekerjaan = document.getElementById('form-pekerjaan').value;
+            const desil = document.getElementById('form-desil').value;
+            const no_hp = document.getElementById('form-no-hp').value || '-';
+            
+            const ktp = document.getElementById('ktpBase64').value || null;
+            const kk = document.getElementById('kkBase64').value || null;
+
+            if (id) {
+                const index = state.warga.findIndex(w => w.id === id);
+                if(index > -1) {
+                    state.warga[index] = { 
+                        ...state.warga[index], 
+                        nik, nokk, nama, tgl_lahir, gender, shdk, pekerjaan, desil, no_hp, 
+                        ktp: ktp || state.warga[index].ktp, 
+                        kk: kk || state.warga[index].kk 
+                    };
+                    showToast('Data warga berhasil diperbarui.');
+                }
+            } else {
+                const newId = 'W-' + Math.random().toString(36).substr(2, 7).toUpperCase();
+                state.warga.push({ id: newId, nik, nokk, nama, tgl_lahir, gender, shdk, pekerjaan, desil, no_hp, status: 'Aktif', ktp, kk });
+                showToast('Warga baru berhasil ditambahkan.');
+            }
+
+            saveDataOffline();
+            closeModalWarga();
+            refreshAllViews();
+        }
+
+        function editWarga(id) {
+            const w = state.warga.find(x => x.id === id);
+            if(w) {
+                openModalWarga();
+                document.getElementById('warga-modal-title').innerText = 'Edit Data Warga';
+                document.getElementById('form-warga-id').value = w.id;
+                document.getElementById('form-nik').value = w.nik;
+                document.getElementById('form-nokk').value = w.nokk;
+                document.getElementById('form-nama').value = w.nama;
+                document.getElementById('form-tgl_lahir').value = w.tgl_lahir;
+                document.getElementById('form-gender').value = w.gender;
+                document.getElementById('form-shdk').value = w.shdk || 'Lainnya';
+                document.getElementById('form-pekerjaan').value = w.pekerjaan || '';
+                document.getElementById('form-desil').value = w.desil || 'Non-Desil';
+                document.getElementById('form-no-hp').value = (w.no_hp && w.no_hp !== '-') ? w.no_hp : '';
+                
+                if(w.ktp) { document.getElementById('ktpBase64').value = w.ktp; document.getElementById('ktp-preview').classList.remove('hidden'); }
+                if(w.kk) { document.getElementById('kkBase64').value = w.kk; document.getElementById('kk-preview').classList.remove('hidden'); }
+            }
+        }
+
+        function deleteWarga(id) {
+            if(confirm('Yakin ingin menghapus data warga ini?')) {
+                state.warga = state.warga.filter(w => w.id !== id);
+                saveDataOffline();
+                showToast('Data warga telah dihapus.', 'error');
+                refreshAllViews();
+            }
+        }
+
+        function openModalDetail(id) {
+            const w = state.warga.find(x => x.id === id);
+            if(!w) return;
+
+            document.getElementById('detail-nama').innerText = w.nama;
+            document.getElementById('detail-nik').innerText = `NIK: ${w.nik} | KK: ${w.nokk}`;
+            
+            const noHpEl = document.getElementById('detail-nohp');
+            if (w.no_hp && w.no_hp !== '-') {
+                noHpEl.innerHTML = `<i class="fa-brands fa-whatsapp text-emerald-600"></i> <a href="https://wa.me/${w.no_hp.replace(/^0/, '62')}" target="_blank" class="hover:underline text-emerald-700">${w.no_hp} (Hubungi)</a>`;
+            } else {
+                noHpEl.innerHTML = `<i class="fa-solid fa-phone text-zinc-400"></i> <span class="text-zinc-400">Tidak ada HP</span>`;
+            }
+
+            const usia = hitungUsia(w.tgl_lahir);
+            document.getElementById('detail-usia').innerText = `${usia} thn (${kategoriUsia(usia).split(' ')[0]})`;
+            document.getElementById('detail-shdk').innerText = w.shdk || '-';
+            document.getElementById('detail-pekerjaan').innerText = w.pekerjaan || '-';
+            document.getElementById('detail-desil').innerText = w.desil || 'Non-Desil';
+            
+            const statusEl = document.getElementById('detail-status');
+            statusEl.innerText = w.status;
+            statusEl.className = w.status === 'Aktif' 
+                ? 'px-2.5 py-0.5 rounded text-[10px] font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'px-2.5 py-0.5 rounded text-[10px] font-semibold border border-rose-200 bg-rose-50 text-rose-700';
+
+            document.getElementById('detail-avatar').innerHTML = w.gender === 'Laki-laki' 
+                ? '<i class="fa-solid fa-mars text-blue-500"></i>' 
+                : '<i class="fa-solid fa-venus text-rose-500"></i>';
+
+            // KTP & KK Previews
+            const imgKtp = document.getElementById('img-ktp');
+            const noKtp = document.getElementById('no-ktp');
+            if(w.ktp) {
+                imgKtp.src = w.ktp;
+                imgKtp.classList.remove('hidden');
+                noKtp.classList.add('hidden');
+            } else {
+                imgKtp.src = '';
+                imgKtp.classList.add('hidden');
+                noKtp.classList.remove('hidden');
+            }
+
+            const imgKk = document.getElementById('img-kk');
+            const noKk = document.getElementById('no-kk');
+            if(w.kk) {
+                imgKk.src = w.kk;
+                imgKk.classList.remove('hidden');
+                noKk.classList.add('hidden');
+            } else {
+                imgKk.src = '';
+                imgKk.classList.add('hidden');
+                noKk.classList.remove('hidden');
+            }
+
+            document.getElementById('modal-detail').classList.remove('hidden');
+        }
+
+        function closeModalDetail() {
+            document.getElementById('modal-detail').classList.add('hidden');
+        }
+
+        function viewImageFull(imgId) {
+            const src = document.getElementById(imgId).src;
+            if(src && src !== window.location.href) {
+                const w = window.open("");
+                w.document.write(`<img src="${src}" style="max-width:100%; height:auto;">`);
+            } else {
+                showToast('Berkas tidak tersedia.', 'error');
+            }
+        }
+
+        function renderTableMutasi() {
+            const tbody = document.getElementById('table-mutasi-body');
+            const emptyState = document.getElementById('empty-state-mutasi');
+            
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (state.mutasi.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+                
+                const sorted = [...state.mutasi].sort((a,b) => new Date(b.tgl) - new Date(a.tgl));
+                
+                sorted.forEach(m => {
+                    const badgeClass = m.jenis === 'Meninggal' 
+                        ? 'bg-zinc-100 text-zinc-700 border-zinc-300' 
+                        : 'bg-amber-50 text-amber-700 border-amber-200';
+                        
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-zinc-50 transition">
+                            <td class="py-3 px-4 font-mono text-xs text-zinc-600">${m.tgl}</td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${badgeClass}">${m.jenis}</span>
+                            </td>
+                            <td class="py-3 px-4 font-semibold text-zinc-900 text-sm">${m.namaWarga}</td>
+                            <td class="py-3 px-4 text-xs text-zinc-500">${m.ket || '-'}</td>
+                            <td class="py-3 px-4 text-right">
+                                <button onclick="batalMutasi('${m.id}')" class="text-[11px] bg-white border border-zinc-200 px-2.5 py-1 rounded text-zinc-600 hover:text-rose-600 shadow-sm transition">
+                                    <i class="fa-solid fa-rotate-left mr-1"></i> Batal
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function openModalMutasi() {
+            document.getElementById('mutasiForm').reset();
+            const select = document.getElementById('mutasi-warga-id');
+            select.innerHTML = '<option value="">-- Pilih Warga Aktif --</option>';
+            
+            state.warga.filter(w => w.status === 'Aktif').forEach(w => {
+                select.innerHTML += `<option value="${w.id}">${w.nik} - ${w.nama}</option>`;
+            });
+
+            document.getElementById('mutasi-tanggal').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-mutasi').classList.remove('hidden');
+        }
+
+        function closeModalMutasi() {
+            document.getElementById('modal-mutasi').classList.add('hidden');
+        }
+
+        function submitMutasi() {
+            const wId = document.getElementById('mutasi-warga-id').value;
+            const jenis = document.getElementById('mutasi-jenis').value;
+            const tgl = document.getElementById('mutasi-tanggal').value;
+            const ket = document.getElementById('mutasi-keterangan').value;
+
+            const wIndex = state.warga.findIndex(w => w.id === wId);
+            if (wIndex > -1) {
+                state.warga[wIndex].status = jenis; 
+                state.mutasi.push({
+                    id: 'M-' + Date.now(),
+                    wargaId: wId,
+                    namaWarga: state.warga[wIndex].nama,
+                    jenis,
+                    tgl,
+                    ket
+                });
+                
+                saveDataOffline();
+                showToast(`Mutasi ${jenis} berhasil dicatat.`);
+                closeModalMutasi();
+                refreshAllViews();
+            }
+        }
+
+        function batalMutasi(id) {
+            const mIndex = state.mutasi.findIndex(m => m.id === id);
+            if(mIndex > -1) {
+                const wId = state.mutasi[mIndex].wargaId;
+                const wIndex = state.warga.findIndex(w => w.id === wId);
+                
+                if(wIndex > -1) {
+                    state.warga[wIndex].status = 'Aktif'; 
+                }
+                
+                state.mutasi.splice(mIndex, 1);
+                saveDataOffline();
+                showToast('Mutasi dibatalkan.', 'info');
+                refreshAllViews();
+            }
+        }
+    </script>
+</body>
+</html>
